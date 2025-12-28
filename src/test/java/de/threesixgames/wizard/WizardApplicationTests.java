@@ -1,4 +1,4 @@
-package de._games.wizard;
+package de.threesixgames.wizard;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

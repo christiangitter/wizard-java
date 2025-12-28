@@ -1,4 +1,4 @@
-package de._games.wizard;
+package de.threesixgames.wizard;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
