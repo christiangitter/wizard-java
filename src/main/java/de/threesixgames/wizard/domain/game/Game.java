@@ -62,7 +62,7 @@ public class Game {
             deck.removeAll(hand);
         }
 
-        trump = deck.get(0).type();
+        trump = deck.getFirst().type();
     }
 
     public void placeBid(UUID playerId, int value) {
