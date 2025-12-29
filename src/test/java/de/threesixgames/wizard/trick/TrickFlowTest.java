@@ -1,4 +1,4 @@
-package de.threesixgames.wizard;
+package de.threesixgames.wizard.trick;
 
 import de.threesixgames.wizard.domain.cards.Card;
 import de.threesixgames.wizard.domain.game.Game;
@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class TrickTest {
+class TrickFlowTest {
 
     private Game game;
     private Player player1, player2, player3;
