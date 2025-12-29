@@ -54,10 +54,18 @@ public class Trick {
             return winner = trumpWinner.get().playerId();
 
         // 4. Otherwise, highest card of the lead type wins
-        return winner = cards.stream()
+        Optional<Entry> leadWinner = cards.stream()
                 .filter(c -> c.card().type() == leadType)
-                .max(Comparator.comparingInt(c -> c.card().rank().getValue()))
-                .get()
+                .max(Comparator.comparingInt(c -> c.card().rank().getValue()));
+
+        if (leadWinner.isPresent())
+            return winner = leadWinner.get().playerId();
+
+        // 5. Fallback: first non-FOOL card wins
+        return winner = cards.stream()
+                .filter(c -> !c.card().isFool())
+                .findFirst()
+                .orElse(cards.get(0)) // fallback: all FOOLs, already handled above, but for safety
                 .playerId();
     }
 }
