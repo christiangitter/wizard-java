@@ -6,9 +6,12 @@ import de.threesixgames.wizard.domain.cards.Rank;
 import de.threesixgames.wizard.domain.cards.Type;
 import de.threesixgames.wizard.domain.game.Game;
 import de.threesixgames.wizard.domain.players.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -17,6 +20,7 @@ public class GameController {
 
     private final GameRepository repo;
     private final SimpMessagingTemplate messaging;
+    private final Logger LOG = LoggerFactory.getLogger(GameController.class);
 
     public GameController(GameRepository repo, SimpMessagingTemplate messaging) {
         this.repo = repo;
@@ -24,19 +28,25 @@ public class GameController {
     }
 
     @PostMapping("/create")
-    public UUID create(@RequestParam String username) {
+    public Map<String, Object> create(@RequestParam String username) {
         Game game = new Game();
         repo.save(game);
-        join(game.getId(), username);
-        return game.getId();
+        Player player = new Player(UUID.randomUUID(), username);
+        game.join(player);
+        repo.save(game);
+        LOG.info("Created game: {} by PlayerID: {}", game, player.id());
+        return Map.of("gameId", game.getId(), "playerId", player.id());
     }
 
     @PostMapping("/{id}/join")
-    public void join(@PathVariable UUID id, @RequestParam String username) {
+    public Map<String, Object> join(@PathVariable UUID id, @RequestParam String username) {
         Game game = repo.getGame(id);
-        game.join(new Player(UUID.randomUUID(), username));
+        Player player = new Player(UUID.randomUUID(), username);
+        game.join(player);
         repo.save(game);
         messaging.convertAndSend("/topic/" + id + "/joined", username);
+        LOG.info("Joined game: {}, Player: {}", game, player.id());
+        return Map.of("gameId", id, "playerId", player.id());
     }
 
     @PostMapping("/{id}/start")
@@ -44,6 +54,11 @@ public class GameController {
         Game game = repo.getGame(id);
         game.start();
         repo.save(game);
+        for (Player player : game.getPlayers()) {
+            LOG.info("Starting game: {}, PlayerID: {}", game, player.id());
+            LOG.info("Player {} has cards: {}", player.id(), game.getHand(player.id()));
+            LOG.info("Trump for this round: {}", game.getTrump());
+        }
         messaging.convertAndSend("/topic/" + id + "/started", game);
     }
 
@@ -54,6 +69,7 @@ public class GameController {
         Game game = repo.getGame(id);
         game.placeBid(playerId, bid);
         repo.save(game);
+        LOG.info("Bid: {}, Player: {}", bid, playerId);
         messaging.convertAndSend("/topic/" + id + "/bid", "");
     }
 
@@ -65,6 +81,12 @@ public class GameController {
         Game game = repo.getGame(id);
         game.playCard(playerId, new Card(suit, rank));
         repo.save(game);
+        LOG.info("Played card: {}, Player: {}", game, playerId);
         messaging.convertAndSend("/topic/" + id + "/update", "");
+    }
+
+    @GetMapping("/{id}/state")
+    public Game getState(@PathVariable UUID id) {
+        return repo.getGame(id);
     }
 }

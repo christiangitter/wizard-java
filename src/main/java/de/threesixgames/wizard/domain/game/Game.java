@@ -99,5 +99,13 @@ public class Game {
     public Map<UUID, Integer> getTricksWon() {
         return Collections.unmodifiableMap(tricksWon);
     }
+
+    public List<Player> getPlayers() {
+        return Collections.unmodifiableList(players);
+    }
+
+    public Type getTrump() {
+        return trump;
+    }
 }
 
