@@ -91,5 +91,13 @@ public class Game {
             currentTrick = new Trick(winner);
         }
     }
+
+    public List<Card> getHand(UUID playerId) {
+        return hands.getOrDefault(playerId, Collections.emptyList());
+    }
+
+    public Map<UUID, Integer> getTricksWon() {
+        return Collections.unmodifiableMap(tricksWon);
+    }
 }
 
