@@ -1,5 +1,6 @@
 package de.threesixgames.wizard.api.controller;
 
+import de.threesixgames.wizard.api.GameStartResponse;
 import de.threesixgames.wizard.data.GameRepository;
 import de.threesixgames.wizard.domain.cards.Card;
 import de.threesixgames.wizard.domain.cards.Rank;
@@ -8,9 +9,11 @@ import de.threesixgames.wizard.domain.game.Game;
 import de.threesixgames.wizard.domain.players.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -50,16 +53,21 @@ public class GameController {
     }
 
     @PostMapping("/{id}/start")
-    public void start(@PathVariable UUID id) {
+    public ResponseEntity<GameStartResponse> start(@PathVariable UUID id) {
         Game game = repo.getGame(id);
         game.start();
         repo.save(game);
+
+        Map<UUID, Object> handsInfo = new HashMap<>();
         for (Player player : game.getPlayers()) {
-            LOG.info("Starting game: {}, PlayerID: {}", game, player.id());
-            LOG.info("Player {} has cards: {}", player.id(), game.getHand(player.id()));
-            LOG.info("Trump for this round: {}", game.getTrump());
+            handsInfo.put(player.id(), game.getHand(player.id()));
         }
+
+        Object trump = game.getTrump();
+
         messaging.convertAndSend("/topic/" + id + "/started", game);
+
+        return ResponseEntity.ok(new GameStartResponse(handsInfo, trump));
     }
 
     @PostMapping("/{id}/bid")
