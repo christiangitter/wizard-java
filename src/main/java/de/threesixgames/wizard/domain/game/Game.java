@@ -2,6 +2,7 @@ package de.threesixgames.wizard.domain.game;
 
 import de.threesixgames.wizard.domain.cards.Card;
 import de.threesixgames.wizard.domain.cards.Type;
+import de.threesixgames.wizard.domain.game.utils.ScoreUtil;
 import de.threesixgames.wizard.domain.players.Player;
 
 import java.util.*;
@@ -15,6 +16,7 @@ public class Game {
     private final Map<UUID, List<Card>> hands = new HashMap<>();
     private final Map<UUID, Integer> bids = new HashMap<>();
     private final Map<UUID, Integer> tricksWon = new HashMap<>();
+    private final Map<UUID, Integer> scores = new HashMap<>();
 
     private Trick currentTrick;
     private Type trump = Type.NONE;
@@ -42,12 +44,13 @@ public class Game {
         players.forEach(p -> {
             hands.put(p.id(), new ArrayList<>());
             tricksWon.put(p.id(), 0);
+            scores.put(p.id(), 0);
         });
 
         dealCards();
 
         state = GameState.BIDDING;
-        currentPlayer = players.get(0).id();
+        currentPlayer = players.getFirst().id();
     }
 
     private void dealCards() {
@@ -89,7 +92,22 @@ public class Game {
             UUID winner = currentTrick.resolve(trump);
             tricksWon.put(winner, tricksWon.get(winner) + 1);
             currentTrick = new Trick(winner);
+
+            // Check if round is over (all hands empty)
+            if (hands.values().stream().allMatch(List::isEmpty)) {
+                scoreRound();
+            }
         }
+    }
+
+    private void scoreRound() {
+        for (Player player : players) {
+            int predicted = bids.getOrDefault(player.id(), 0);
+            int actual = tricksWon.getOrDefault(player.id(), 0);
+            int score = ScoreUtil.calculateScore(predicted, actual);
+            scores.put(player.id(), scores.getOrDefault(player.id(), 0) + score);
+        }
+        state = GameState.SCORING;
     }
 
     public List<Card> getHand(UUID playerId) {
@@ -107,5 +125,8 @@ public class Game {
     public Type getTrump() {
         return trump;
     }
-}
 
+    public Map<UUID, Integer> getScores() {
+        return Collections.unmodifiableMap(scores);
+    }
+}

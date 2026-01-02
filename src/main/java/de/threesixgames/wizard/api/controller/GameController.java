@@ -97,4 +97,12 @@ public class GameController {
     public Game getState(@PathVariable UUID id) {
         return repo.getGame(id);
     }
+
+    @GetMapping("/{id}/scores")
+    public Map<UUID, Integer> getScores(@PathVariable UUID id) {
+        Game game = repo.getGame(id);
+        return game.getScores();
+    }
 }
+
+
