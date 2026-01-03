@@ -22,6 +22,9 @@ public class Game {
     private Type trump = Type.NONE;
     private UUID currentPlayer;
 
+    private int round = 1;
+    private int maxRounds = 1;
+
     public UUID getId() { return id; }
     public GameState getState() { return state; }
 
@@ -39,7 +42,12 @@ public class Game {
         if (players.size() < 3)
             throw new IllegalStateException("Need >= 3 players");
 
+        // Calculate max rounds based on deck size and player count
+        int deckSize = 60; // Wizard deck: 52 + 4 Wizards + 4 Jesters
+        maxRounds = deckSize / players.size();
+
         state = GameState.DEALING;
+        round = 1;
 
         players.forEach(p -> {
             hands.put(p.id(), new ArrayList<>());
@@ -57,15 +65,18 @@ public class Game {
         List<Card> deck = DeckBuilder.build();
         Collections.shuffle(deck);
 
-        int cardCount = 1;
+        int cardCount = round;
 
         for (Player p : players) {
             List<Card> hand = deck.subList(0, cardCount);
+            hands.get(p.id()).clear();
             hands.get(p.id()).addAll(hand);
-            deck.removeAll(hand);
+            deck.subList(0, cardCount).clear();
         }
 
-        trump = deck.getFirst().type();
+        trump = deck.isEmpty() ? Type.NONE : deck.getFirst().type();
+        bids.clear();
+        tricksWon.replaceAll((k, v) -> 0);
     }
 
     public void placeBid(UUID playerId, int value) {
@@ -108,6 +119,21 @@ public class Game {
             scores.put(player.id(), scores.getOrDefault(player.id(), 0) + score);
         }
         state = GameState.SCORING;
+
+        // Start next round if possible
+        if (round < maxRounds) {
+            round++;
+            startNextRound();
+        } else {
+            state = GameState.FINISHED;
+        }
+    }
+
+    private void startNextRound() {
+        state = GameState.DEALING;
+        dealCards();
+        state = GameState.BIDDING;
+        currentPlayer = players.getFirst().id();
     }
 
     public List<Card> getHand(UUID playerId) {

@@ -1,4 +1,4 @@
-package de.threesixgames.wizard.trick;
+package de.threesixgames.wizard;
 
 import de.threesixgames.wizard.domain.cards.Card;
 import de.threesixgames.wizard.domain.cards.Rank;

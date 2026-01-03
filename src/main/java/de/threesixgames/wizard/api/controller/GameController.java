@@ -1,6 +1,7 @@
 package de.threesixgames.wizard.api.controller;
 
 import de.threesixgames.wizard.api.GameStartResponse;
+import de.threesixgames.wizard.api.GameStateResponse;
 import de.threesixgames.wizard.data.GameRepository;
 import de.threesixgames.wizard.domain.cards.Card;
 import de.threesixgames.wizard.domain.cards.Rank;
@@ -14,6 +15,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -94,8 +96,13 @@ public class GameController {
     }
 
     @GetMapping("/{id}/state")
-    public Game getState(@PathVariable UUID id) {
-        return repo.getGame(id);
+    public GameStateResponse getState(@PathVariable UUID id) {
+        Game game = repo.getGame(id);
+        Map<UUID, List<Card>> handsInfo = new HashMap<>();
+        for (Player player : game.getPlayers()) {
+            handsInfo.put(player.id(), game.getHand(player.id()));
+        }
+        return new GameStateResponse(game, handsInfo);
     }
 
     @GetMapping("/{id}/scores")
