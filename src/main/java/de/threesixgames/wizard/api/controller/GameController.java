@@ -9,6 +9,7 @@ import de.threesixgames.wizard.domain.cards.Type;
 import de.threesixgames.wizard.domain.game.Game;
 import de.threesixgames.wizard.domain.players.Player;
 import de.threesixgames.wizard.service.GameService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,7 @@ public class GameController {
         this.gameService = gameService;
     }
 
+    @Tag(name = "Game Steps")
     @PostMapping("/create")
     public Map<String, Object> create(@RequestParam String username) {
         Player player = new Player(UUID.randomUUID(), username);
@@ -44,6 +46,7 @@ public class GameController {
         return Map.of("gameId", game.getId(), "playerId", player.id());
     }
 
+    @Tag(name = "Game Steps")
     @PostMapping("/{id}/join")
     public Map<String, Object> join(@PathVariable UUID id, @RequestParam String username) {
         Game game = repo.getGame(id);
@@ -55,6 +58,7 @@ public class GameController {
         return Map.of("gameId", id, "playerId", player.id());
     }
 
+    @Tag(name = "Game Steps")
     @PostMapping("/{id}/start")
     public ResponseEntity<GameStartResponse> start(@PathVariable UUID id) {
         Game game = repo.getGame(id);
@@ -73,6 +77,7 @@ public class GameController {
         return ResponseEntity.ok(new GameStartResponse(handsInfo, trump));
     }
 
+    @Tag(name = "Game Steps")
     @PostMapping("/{id}/bid")
     public void bid(@PathVariable UUID id,
                     @RequestParam UUID playerId,
@@ -84,6 +89,7 @@ public class GameController {
         messaging.convertAndSend("/topic/" + id + "/bid", "");
     }
 
+    @Tag(name = "Game Steps")
     @PostMapping("/{id}/play")
     public void play(@PathVariable UUID id,
                      @RequestParam UUID playerId,
@@ -96,6 +102,7 @@ public class GameController {
         messaging.convertAndSend("/topic/" + id + "/update", "");
     }
 
+    @Tag(name = "Get Game State", description = "This Endpoint retrieves the current state of the game, including player hands and game status.")
     @GetMapping("/{id}/state")
     public GameStateResponse getState(@PathVariable UUID id) {
         Game game = repo.getGame(id);
@@ -106,6 +113,7 @@ public class GameController {
         return new GameStateResponse(game, handsInfo);
     }
 
+    @Tag(name = "Get Scores", description = "This Endpoint retrieves the current scores of all players in the game.")
     @GetMapping("/{id}/scores")
     public Map<UUID, Integer> getScores(@PathVariable UUID id) {
         Game game = repo.getGame(id);
