@@ -2,146 +2,47 @@ package de.threesixgames.wizard.domain.game;
 
 import de.threesixgames.wizard.domain.cards.Card;
 import de.threesixgames.wizard.domain.cards.Type;
-import de.threesixgames.wizard.domain.game.utils.ScoreUtil;
 import de.threesixgames.wizard.domain.players.Player;
 
 import java.util.*;
 
 public class Game {
 
-    private final UUID id = UUID.randomUUID();
-    private GameState state = GameState.LOBBY;
+    private final UUID id;
+    private GameState state;
 
-    private final List<Player> players = new ArrayList<>();
-    private final Map<UUID, List<Card>> hands = new HashMap<>();
-    private final Map<UUID, Integer> bids = new HashMap<>();
-    private final Map<UUID, Integer> tricksWon = new HashMap<>();
-    private final Map<UUID, Integer> scores = new HashMap<>();
+    private final List<Player> players;
+    private final Map<UUID, List<Card>> hands;
+    private final Map<UUID, Integer> bids;
+    private final Map<UUID, Integer> tricksWon;
+    private final Map<UUID, Integer> scores;
 
     private Trick currentTrick;
-    private Type trump = Type.NONE;
+    private Type trump;
     private UUID currentPlayer;
 
-    private int round = 1;
-    private int maxRounds = 1;
+    private int round;
+    private int maxRounds;
 
-    public UUID getId() { return id; }
-    public GameState getState() { return state; }
-
-    public void join(Player player) {
-        if (state != GameState.LOBBY)
-            throw new IllegalStateException("Game already started");
-
-        if (players.size() >= 5)
-            throw new IllegalStateException("Max 5");
-
-        players.add(player);
+    public Game(List<Player> players) {
+        this.id = UUID.randomUUID();
+        this.players = new ArrayList<>(players);
+        this.hands = new HashMap<>();
+        this.bids = new HashMap<>();
+        this.tricksWon = new HashMap<>();
+        this.scores = new HashMap<>();
+        this.state = GameState.LOBBY;
+        this.trump = Type.NONE;
+        this.round = 1;
+        this.maxRounds = 1;
     }
 
-    public void start() {
-        if (players.size() < 3)
-            throw new IllegalStateException("Need >= 3 players");
-
-        // Calculate max rounds based on deck size and player count
-        int deckSize = 60; // Wizard deck: 52 + 4 Wizards + 4 Jesters
-        maxRounds = deckSize / players.size();
-
-        state = GameState.DEALING;
-        round = 1;
-
-        players.forEach(p -> {
-            hands.put(p.id(), new ArrayList<>());
-            tricksWon.put(p.id(), 0);
-            scores.put(p.id(), 0);
-        });
-
-        dealCards();
-
-        state = GameState.BIDDING;
-        currentPlayer = players.getFirst().id();
+    public UUID getId() {
+        return id;
     }
 
-    private void dealCards() {
-        List<Card> deck = DeckBuilder.build();
-        Collections.shuffle(deck);
-
-        int cardCount = round;
-
-        for (Player p : players) {
-            List<Card> hand = deck.subList(0, cardCount);
-            hands.get(p.id()).clear();
-            hands.get(p.id()).addAll(hand);
-            deck.subList(0, cardCount).clear();
-        }
-
-        trump = deck.isEmpty() ? Type.NONE : deck.getFirst().type();
-        bids.clear();
-        tricksWon.replaceAll((k, v) -> 0);
-    }
-
-    public void placeBid(UUID playerId, int value) {
-        bids.put(playerId, value);
-
-        if (bids.size() == players.size()) {
-            state = GameState.PLAYING;
-            currentTrick = new Trick(currentPlayer);
-        }
-    }
-
-    public void playCard(UUID playerId, Card card) {
-        if (state != GameState.PLAYING)
-            throw new IllegalStateException("Not playing");
-
-        List<Card> hand = hands.get(playerId);
-        if (!hand.contains(card))
-            throw new IllegalStateException("Card not owned");
-
-        currentTrick.playCard(playerId, card);
-        hand.remove(card);
-
-        if (currentTrick.isComplete(players.size())) {
-            UUID winner = currentTrick.resolve(trump);
-            tricksWon.put(winner, tricksWon.get(winner) + 1);
-            currentTrick = new Trick(winner);
-
-            // Check if round is over (all hands empty)
-            if (hands.values().stream().allMatch(List::isEmpty)) {
-                scoreRound();
-            }
-        }
-    }
-
-    private void scoreRound() {
-        for (Player player : players) {
-            int predicted = bids.getOrDefault(player.id(), 0);
-            int actual = tricksWon.getOrDefault(player.id(), 0);
-            int score = ScoreUtil.calculateScore(predicted, actual);
-            scores.put(player.id(), scores.getOrDefault(player.id(), 0) + score);
-        }
-        state = GameState.SCORING;
-
-        // Start next round if possible
-        if (round < maxRounds) {
-            round++;
-            startNextRound();
-        } else {
-            state = GameState.FINISHED;
-        }
-    }
-
-    private void startNextRound() {
-        state = GameState.DEALING;
-        dealCards();
-        state = GameState.BIDDING;
-        currentPlayer = players.getFirst().id();
-    }
-
-    public List<Card> getHand(UUID playerId) {
-        return hands.getOrDefault(playerId, Collections.emptyList());
-    }
-
-    public Map<UUID, Integer> getTricksWon() {
-        return Collections.unmodifiableMap(tricksWon);
+    public GameState getState() {
+        return state;
     }
 
     public List<Player> getPlayers() {
@@ -152,7 +53,103 @@ public class Game {
         return trump;
     }
 
+    public int getRound() {
+        return round;
+    }
+
+    public int getMaxRounds() {
+        return maxRounds;
+    }
+
     public Map<UUID, Integer> getScores() {
         return Collections.unmodifiableMap(scores);
+    }
+
+    public Map<UUID, Integer> getTricksWon() {
+        return Collections.unmodifiableMap(tricksWon);
+    }
+
+    public List<Card> getHand(UUID playerId) {
+        return hands.getOrDefault(playerId, Collections.emptyList());
+    }
+
+    public void join(Player player) {
+        if (state != GameState.LOBBY)
+            throw new IllegalStateException("Game already started");
+        if (players.size() >= 5)
+            throw new IllegalStateException("Max 5 players");
+        players.add(player);
+    }
+
+    public void setState(GameState state) {
+        this.state = state;
+    }
+
+    public void setTrump(Type trump) {
+        this.trump = trump;
+    }
+
+    public void setRound(int round) {
+        this.round = round;
+    }
+
+    public void setMaxRounds(int maxRounds) {
+        this.maxRounds = maxRounds;
+    }
+
+    public void setCurrentPlayer(UUID playerId) {
+        this.currentPlayer = playerId;
+    }
+
+    public void setHand(UUID playerId, List<Card> hand) {
+        hands.put(playerId, new ArrayList<>(hand));
+    }
+
+    public void setCurrentTrick(Trick trick) {
+        this.currentTrick = trick;
+    }
+
+    public void placeBid(UUID playerId, int value) {
+        if (state != GameState.BIDDING)
+            throw new IllegalStateException("Not in bidding phase");
+        bids.put(playerId, value);
+    }
+
+    public void playCard(UUID playerId, Card card) {
+        if (state != GameState.PLAYING)
+            throw new IllegalStateException("Not playing");
+        List<Card> hand = hands.get(playerId);
+        if (hand == null || !hand.contains(card))
+            throw new IllegalStateException("Card not owned");
+        currentTrick.playCard(playerId, card);
+        hand.remove(card);
+    }
+
+    public void addTrick(UUID playerId) {
+        tricksWon.put(playerId, tricksWon.getOrDefault(playerId, 0) + 1);
+    }
+
+    public void addScore(UUID playerId, int score) {
+        scores.put(playerId, scores.getOrDefault(playerId, 0) + score);
+    }
+
+    public Trick getCurrentTrick() {
+        return currentTrick;
+    }
+
+    public UUID getCurrentPlayer() {
+        return currentPlayer;
+    }
+
+    public Map<UUID, Integer> getBids() {
+        return Collections.unmodifiableMap(bids);
+    }
+
+    public void clearBids() {
+        bids.clear();
+    }
+
+    public void resetTricksWon() {
+        tricksWon.clear();
     }
 }
